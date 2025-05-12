@@ -1,0 +1,7 @@
+tunnel: cenft-app
+credentials-file: /Users/fisherder/.cloudflared/b5e48073-2e18-4f6e-800f-3795bbfaf9f0.json
+
+ingress:
+  - hostname: cenft.your-domain.com
+    service: http://localhost:3000
+  - service: http_status:404 
