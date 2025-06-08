@@ -1,8 +1,34 @@
 <template>
   <div class="admin-panel">
-    <el-tabs v-model="activeTab" @tab-click="handleTabClick" class="fullwidth-tabs">
-      <el-tab-pane label="活动列表" name="list">
-        <div v-show="activeTab === 'list'">
+    <el-container class="admin-container">
+      <!-- 左侧侧边栏 -->
+      <el-aside width="200px" class="sidebar">
+        <div class="sidebar-header">
+          <h3>管理面板</h3>
+        </div>
+        <el-menu
+          :default-active="activeTab"
+          class="sidebar-menu"
+          @select="handleMenuSelect"
+          background-color="#304156"
+          text-color="#bfcbd9"
+          active-text-color="#409EFF">
+          <el-menu-item index="list">
+            <el-icon><document /></el-icon>
+            <span>活动列表</span>
+          </el-menu-item>
+          <el-menu-item index="create">
+            <el-icon><plus /></el-icon>
+            <span>创建活动</span>
+          </el-menu-item>
+        </el-menu>
+      </el-aside>
+      
+      <!-- 右侧主内容区 -->
+      <el-main class="main-content">
+        <!-- 活动列表 -->
+        <div v-show="activeTab === 'list'" class="content-section">
+          <h2 class="section-title">活动列表</h2>
           <el-table :data="events" style="width: 100%" v-loading="loading">
             <el-table-column prop="id" label="ID" width="80" />
             <el-table-column prop="name" label="活动名称" />
@@ -45,11 +71,13 @@
             </el-table-column>
           </el-table>
         </div>
-      </el-tab-pane>
 
-      <el-tab-pane label="创建活动" name="create">
-        <div v-show="activeTab === 'create'" class="create-form-container">
-          <el-form :model="eventForm" label-width="120px" class="event-form">
+        <!-- 创建活动 -->
+        <div v-show="activeTab === 'create'" class="create-container">
+          <div class="create-header">
+            <h2 class="section-title">创建活动</h2>
+          </div>
+          <el-form :model="eventForm" label-position="top" class="event-form-fullwidth">
             <el-form-item label="活动名称">
               <el-input v-model="eventForm.name" />
             </el-form-item>
@@ -67,6 +95,7 @@
                 style="width: 100%"
                 :editable="false"
                 :clearable="true"
+                class="date-picker-full"
               />
             </el-form-item>
             <el-form-item label="结束时间">
@@ -80,6 +109,7 @@
                 style="width: 100%"
                 :editable="false"
                 :clearable="true"
+                class="date-picker-full"
               />
             </el-form-item>
             <el-form-item label="最大参与人数">
@@ -90,8 +120,8 @@
             </el-form-item>
           </el-form>
         </div>
-      </el-tab-pane>
-    </el-tabs>
+      </el-main>
+    </el-container>
 
     <!-- 签到二维码对话框 -->
     <el-dialog
@@ -135,6 +165,10 @@ import { web3Service } from '../services/web3';
 import { ElMessage } from 'element-plus';
 import dayjs from 'dayjs';
 import QrcodeVue from 'qrcode.vue';
+import {
+  Document,
+  Plus
+} from '@element-plus/icons-vue';
 
 interface Event {
   id: number;
@@ -216,6 +250,49 @@ const getStatusText = (status: number) => {
   return texts[status] || '未知';
 };
 
+const handleMenuSelect = (index: string) => {
+  // 菜单项选择逻辑
+  activeTab.value = index;
+  console.log('Menu changed to:', index);
+  
+  // 切换到创建活动标签时，重置表单
+  if (index === 'create') {
+    // 重置基本信息
+    eventForm.value = {
+      name: '',
+      description: '',
+      startTime: undefined,
+      endTime: undefined,
+      maxParticipants: 100
+    };
+    
+    // 设置默认时间范围（从当前时间开始，持续一周）
+    const now = new Date();
+    const nextWeek = new Date();
+    nextWeek.setDate(now.getDate() + 7);
+    
+    // 设置合理的默认时间：当天上午8点到一周后下午6点
+    const start = new Date(now);
+    start.setHours(8, 0, 0, 0);
+    
+    const end = new Date(nextWeek);
+    end.setHours(18, 0, 0, 0);
+    
+    // 直接更新表单的时间字段
+    eventForm.value.startTime = start;
+    eventForm.value.endTime = end;
+    
+    console.log('Reset create event form');
+  }
+  
+  // 切换到活动列表标签时，刷新活动列表
+  if (index === 'list') {
+    // 刷新活动列表
+    loadEvents();
+    console.log('Refreshed event list');
+  }
+};
+
 const loadEvents = async () => {
   if (loading.value) return;
   
@@ -252,37 +329,6 @@ const loadEvents = async () => {
     ElMessage.error('加载活动列表失败');
   } finally {
     loading.value = false;
-  }
-};
-
-const handleTabClick = (tab: any) => {
-  if (tab.props.name === 'list') {
-    loadEvents();
-  } else if (tab.props.name === 'create') {
-    // 重置基本信息
-    eventForm.value = {
-      name: '',
-      description: '',
-      startTime: undefined,
-      endTime: undefined,
-      maxParticipants: 100
-    };
-    
-    // 设置默认时间范围（从当前时间开始，持续一周）
-    const now = new Date();
-    const nextWeek = new Date();
-    nextWeek.setDate(now.getDate() + 7);
-    
-    // 设置合理的默认时间：当天上午8点到一周后下午6点
-    const start = new Date(now);
-    start.setHours(8, 0, 0, 0);
-    
-    const end = new Date(nextWeek);
-    end.setHours(18, 0, 0, 0);
-    
-    // 直接更新表单的时间字段
-    eventForm.value.startTime = start;
-    eventForm.value.endTime = end;
   }
 };
 
@@ -376,17 +422,41 @@ onUnmounted(() => {
 .create-form-container {
   width: 100%;
   display: block;
+  max-width: none;
 }
 
-.event-form {
+.event-form-fullwidth {
   width: 100%;
-  max-width: 800px;
   margin: 0 auto;
-  background-color: var(--apple-card-bg);
-  border-radius: var(--apple-radius-md);
-  padding: 24px;
-  box-shadow: var(--apple-shadow-sm);
-  border: 1px solid var(--apple-border);
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 32px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.event-form-fullwidth .el-form-item {
+  margin-bottom: 24px;
+}
+
+.event-form-fullwidth .el-form-item__label {
+  font-weight: bold;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.event-form-fullwidth .el-input,
+.event-form-fullwidth .el-textarea,
+.event-form-fullwidth .el-input-number,
+.event-form-fullwidth .date-picker-full {
+  width: 100%;
+}
+
+.event-form-fullwidth .el-input-number {
+  width: 100%;
+}
+
+.event-form-fullwidth .el-form-item:last-child {
+  margin-top: 12px;
 }
 
 .fullwidth-tabs {
@@ -442,9 +512,10 @@ onUnmounted(() => {
 
 .event-description {
   margin-top: 16px;
-  max-width: 100%;
+  line-clamp: 3;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-bottom: 15px;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -469,5 +540,109 @@ onUnmounted(() => {
 .qr-code-tip .small {
   font-size: 0.9em;
   color: #666;
+}
+.admin-container {
+  height: calc(100vh - 80px);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar {
+  height: 100%;
+  background-color: #304156;
+  transition: width 0.3s;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.sidebar-header {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  border-bottom: 1px solid #1f2d3d;
+}
+
+.sidebar-menu {
+  border-right: none;
+  height: calc(100% - 60px);
+}
+
+.sidebar-menu .el-menu-item {
+  display: flex;
+  align-items: center;
+  height: 56px;
+}
+
+.sidebar-menu .el-menu-item .el-icon {
+  margin-right: 10px;
+}
+
+.main-content {
+  padding: 24px;
+  background-color: #f5f7fa;
+  height: 100%;
+  overflow-y: auto;
+  flex: 1;
+  width: calc(100% - 200px); /* 减去侧边栏宽度 */
+}
+
+.content-section {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  width: 100%;
+}
+
+.create-container {
+  width: 100%;
+  padding: 0;
+  background-color: #f5f7fa;
+}
+
+.create-header {
+  margin-bottom: 24px;
+}
+
+.date-picker-full {
+  width: 100% !important;
+}
+
+.el-date-editor.el-input {
+  width: 100% !important;
+}
+
+/* 强制覆盖Element Plus的默认样式 */
+.el-date-editor--datetime {
+  width: 100% !important;
+}
+
+.el-date-editor {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.wide-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.wide-form .el-form-item {
+  width: 100%;
+  max-width: none;
+}
+
+.section-title {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 18px;
+  color: #303133;
+  font-weight: 600;
+  border-bottom: 1px solid #ebeef5;
+  padding-bottom: 10px;
 }
 </style>
